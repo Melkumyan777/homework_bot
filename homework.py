@@ -116,6 +116,7 @@ def parse_status(homework):
     verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
+
 def check_tokens():
     """Проверка доступности переменных окружения."""
     """Если отсутствует хотя бы одна переменная"""

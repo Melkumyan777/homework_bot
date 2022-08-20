@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
 
 class Exception(Exception):
     """Исключение бота."""
+
     pass
+
 
 def send_message(bot, message):
     """Отправка сообщения."""
@@ -49,7 +51,9 @@ def send_message(bot, message):
         logger.error(
             f'Сбой при отправке сообщения в Telegram: {telegram_error}')
 
+
 def get_api_answer(current_timestamp):
+    """Запрос к эндпоинту."""
     timestamp = current_timestamp or int(time.time())
     try:
         homework_status = requests.get(
@@ -97,6 +101,7 @@ def check_response(response):
 
 
 def parse_status(homework):
+    """Получение статуса домашней работы."""
     if 'homework_name' not in homework.keys():
         logger.error('Отсутствует ключ для homework_name')
         raise KeyError('Отсутствует ключ для тhomework_name')
@@ -112,9 +117,9 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 def check_tokens():
-    """Проверка доступности переменных окружения. 
-    Если отсутствует хотя бы одна переменная
-    окружения — функция должна вернуть False, иначе — True"""
+    """Проверка доступности переменных окружения."""
+    """Если отсутствует хотя бы одна переменная"""
+    """окружения — функция должна вернуть False, иначе — True"""
     if (PRACTICUM_TOKEN is None
         or TELEGRAM_TOKEN is None
             or TELEGRAM_CHAT_ID is None):

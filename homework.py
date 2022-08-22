@@ -86,23 +86,23 @@ def get_api_answer(current_timestamp):
     return homework_status_json
 
 
-
 def check_response(response):
     """Проверка ответа API на корректность."""
     logger.info('Проверка ответа API на корректность')
 
     if isinstance(response, dict):
         if 'homeworks' not in response.keys():
-            raise SpecialException('Отсутствует ключевое значение - "homeworks"')
+            raise SpecialException(
+                'Отсутствует ключевое значение - "homeworks"')
 
     if 'error' in response:
         logger.error(response['error'])
         raise SpecialException(response['error'])
 
     if not isinstance(response['homeworks'], list):
-        info_for_check_response = f'{response["homeworks"]} Не является списком'
-        logger.info(info_for_check_response)
-        raise SpecialException(info_for_check_response)
+        info = (f'{response["homeworks"]} Не является списком')
+        logger.info(info)
+        raise SpecialException(info)
     logger.info('Проверка на корректность завершена')
 
     return response['homeworks']

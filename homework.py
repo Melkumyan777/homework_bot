@@ -1,17 +1,17 @@
-
-from http import HTTPStatus
+import os
 import json
 import logging
-import os
 import time
+
 import requests
 import telegram
 from dotenv import load_dotenv
+from http import HTTPStatus
+
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 load_dotenv()
@@ -26,7 +26,8 @@ RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-HOMEWORK_STATUSES = {
+
+VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
@@ -35,7 +36,7 @@ HOMEWORK_STATUSES = {
 logger = logging.getLogger(__name__)
 
 
-class Exception(Exception):
+class SpecialException(Exception):
     """Исключение бота."""
 
     pass
@@ -54,27 +55,36 @@ def send_message(bot, message):
 
 def get_api_answer(current_timestamp):
     """Запрос к эндпоинту."""
+    logger.info('Обращение к серверу')
     timestamp = current_timestamp or int(time.time())
     try:
         homework_status = requests.get(
             ENDPOINT,
-            headers={'Authorization': f'OAuth {PRACTICUM_TOKEN}'},
+            headers=HEADERS,
             params={'from_date': timestamp}
         )
     except requests.exceptions.RequestException as error:
-        raise Exception(f'Ошибка в запросе: {error}')
+        raise SpecialException(f'Ошибка в запросе: {error}')
     except TypeError as error:
-        raise Exception(f'Неверные данные: {error}')
+        raise SpecialException(f'Неверные данные: {error}')
+    except ValueError as error:
+        raise SpecialException(f'Ошибка в значении: {error}')
 
     if homework_status.status_code != HTTPStatus.OK:
-        logger.error(homework_status.json())
-        raise Exception('Ошибка по эндпоинту')
+        try:
+            homework_status_json = homework_status.json()
+            logger.error(homework_status_json)
+            raise SpecialException('Эндпоинт не отвечает')
+        except json.JSONDecodeError:
+            raise SpecialException("Ответ не в формате JSON")
 
     try:
         homework_status_json = homework_status.json()
     except json.JSONDecodeError:
-        raise Exception("Ответ не в формате JSON")
+        raise SpecialException("Ответ не в формате JSON")
+    logger.info("Получен ответ от сервера")
     return homework_status_json
+
 
 
 def check_response(response):
@@ -83,37 +93,41 @@ def check_response(response):
 
     if isinstance(response, dict):
         if 'homeworks' not in response.keys():
-            raise Exception('Отсутствует ключевое значение - "homeworks"')
+            raise SpecialException('Отсутствует ключевое значение - "homeworks"')
 
     if 'error' in response:
         logger.error(response['error'])
-        raise Exception(response['error'])
-
-    if response['homeworks'] is None:
-        logger.info('Нет заданий')
-        raise Exception('Нет заданий')
+        raise SpecialException(response['error'])
 
     if not isinstance(response['homeworks'], list):
-        logger.info(f'{response["homeworks"]} Не является списком')
-        raise Exception(f'{response["homeworks"]} Не является списком')
+        info_for_check_response = f'{response["homeworks"]} Не является списком'
+        logger.info(info_for_check_response)
+        raise SpecialException(info_for_check_response)
     logger.info('Проверка на корректность завершена')
+
     return response['homeworks']
 
 
 def parse_status(homework):
     """Получение статуса домашней работы."""
     if 'homework_name' not in homework.keys():
-        logger.error('Отсутствует ключ для homework_name')
-        raise KeyError('Отсутствует ключ для тhomework_name')
+        info_for_parse_status = 'Отсутствует ключ homework_name'
+        logger.error(info_for_parse_status)
+        raise KeyError(info_for_parse_status)
 
     if 'status' not in homework.keys():
-        logger.error('Отсутствует ключ для status')
-        raise KeyError('Отсутствует ключ для status')
+        info_for_parse_status = 'Отсутствует ключ status'
+        logger.error(info_for_parse_status)
+        raise KeyError(info_for_parse_status)
 
-    homework_name = homework.get('homework_name')
-    homework_status = homework.get('status')
+    homework_name = homework['homework_name']
+    homework_status = homework['status']
 
-    verdict = HOMEWORK_STATUSES[homework_status]
+    verdict = VERDICTS[homework_status]
+
+    if homework_status not in VERDICTS:
+        logger.error('Недокументированный статус домашней работы')
+        raise KeyError('Неизвестный статус')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -124,28 +138,31 @@ def check_tokens():
     if (PRACTICUM_TOKEN is None
         or TELEGRAM_TOKEN is None
             or TELEGRAM_CHAT_ID is None):
-        logger.critical(
-            'Отсутствие обязательных переменных')
+        logger.critical('Отсутствие обязательных переменных')
         return False
     return True
 
 
 def main():
     """Основная логика работы бота."""
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    logging.info('Запуск бота')
+    if not check_tokens():
+        return 0
     current_timestamp = int(time.time())
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
 
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
-            if type(homeworks) is list:
+            if isinstance(homeworks, list) and homeworks:
                 send_message(bot, parse_status(homeworks[0]))
             else:
+                logger.info('Нет заданий')
                 current_timestamp = response['current_date']
                 time.sleep(RETRY_TIME)
 
-        except Exception as error:
+        except SpecialException as error:
             message = f'Сбой в работе программы: {error}'
             logger.critical(message)
             send_message(bot, message)

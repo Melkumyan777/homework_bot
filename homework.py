@@ -167,8 +167,10 @@ def main():
         except SpecialException as error:
             message = f'Сбой в работе программы: {error}'
             logger.critical(message)
-            send_message(bot, message)
-            time.sleep(RETRY_TIME)
+            if homeworks != homework_old:
+                current_homework_status = parse_status(homeworks)
+                send_message(bot, parse_status(current_homework_status))
+                time.sleep(RETRY_TIME)
 
 
 if __name__ == '__main__':

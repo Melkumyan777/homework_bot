@@ -123,11 +123,10 @@ def parse_status(homework):
     homework_name = homework['homework_name']
     homework_status = homework['status']
 
-    verdict = VERDICTS[homework_status]
-
     if homework_status not in VERDICTS:
         logger.error('Недокументированный статус домашней работы')
         raise KeyError('Неизвестный статус')
+    verdict = VERDICTS[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -145,18 +144,21 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
-    logging.info('Запуск бота')
+    logger.info('Запуск бота')
     if not check_tokens():
         return 0
     current_timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    homework_old = ''
 
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             if isinstance(homeworks, list) and homeworks:
-                send_message(bot, parse_status(homeworks[0]))
+                if homeworks != homework_old:
+                    current_homework_status = parse_status(homeworks)
+                    send_message(bot, parse_status(current_homework_status))
             else:
                 logger.info('Нет заданий')
                 current_timestamp = response['current_date']

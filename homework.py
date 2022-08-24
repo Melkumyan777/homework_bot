@@ -1,4 +1,3 @@
-from ftplib import error_temp
 import os
 import json
 import logging
@@ -151,7 +150,7 @@ def main():
     current_timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     homework_old = ''
-    my_error = None
+    my_error = True
 
     while True:
         try:
@@ -169,10 +168,9 @@ def main():
         except SpecialException as error:
             message = f'Сбой в работе программы: {error}'
             logger.critical(message)
-            if my_error != message:
-                my_error = message
-                current_homework_status = parse_status(homeworks)
+            if my_error:
                 send_message(bot, my_error)
+                my_error = False
             time.sleep(RETRY_TIME)
 
 

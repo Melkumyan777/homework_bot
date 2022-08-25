@@ -160,8 +160,7 @@ def main():
             if isinstance(homeworks, list) and homeworks:
                 message = parse_status(homeworks)
                 if homeworks != message:
-                    current_homework_status = parse_status(homeworks)
-                    send_message(bot, current_homework_status)
+                    send_message(bot, message)
             else:
                 logger.info('Нет заданий')
                 current_timestamp = response['current_date']

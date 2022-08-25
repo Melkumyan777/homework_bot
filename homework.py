@@ -172,7 +172,7 @@ def main():
             if message != my_error:
                 sent = send_message(bot, message)
                 if sent is True:
-                    homeworks = message
+                    my_error = message
                 time.sleep(RETRY_TIME)
 
 

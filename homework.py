@@ -153,12 +153,12 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     my_error = ''
 
-
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             if isinstance(homeworks, list) and homeworks:
+                message = parse_status(homeworks)
                 if homeworks != message:
                     current_homework_status = parse_status(homeworks)
                     send_message(bot, current_homework_status)
@@ -167,14 +167,14 @@ def main():
                 current_timestamp = response['current_date']
                 time.sleep(RETRY_TIME)
 
-        except SpecialException as error: 
-            message = f'Сбой в работе программы: {error}' 
-            logger.critical(message) 
+        except SpecialException as error:
+            message = f'Сбой в работе программы: {error}'
+            logger.critical(message)
             if message != my_error:
                 sent = send_message(bot, message)
                 if sent is True:
                     homeworks = message
-                time.sleep(RETRY_TIME) 
+                time.sleep(RETRY_TIME)
 
 
 if __name__ == '__main__':

@@ -48,9 +48,11 @@ def send_message(bot, message):
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info(
             f'Удачная отправка сообщения в Telegram: {message}')
+        return True
     except telegram.TelegramError as telegram_error:
         logger.error(
             f'Сбой при отправке сообщения в Telegram: {telegram_error}')
+        return False
 
 
 def get_api_answer(current_timestamp):
@@ -149,29 +151,30 @@ def main():
         return 0
     current_timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    homework_old = ''
-    my_error = True
+    my_error = ''
+
 
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             if isinstance(homeworks, list) and homeworks:
-                if homeworks != homework_old:
+                if homeworks != message:
                     current_homework_status = parse_status(homeworks)
-                    send_message(bot, parse_status(current_homework_status))
+                    send_message(bot, current_homework_status)
             else:
                 logger.info('Нет заданий')
                 current_timestamp = response['current_date']
                 time.sleep(RETRY_TIME)
 
-        except SpecialException as error:
-            message = f'Сбой в работе программы: {error}'
-            logger.critical(message)
-            if my_error:
-                send_message(bot, my_error)
-                my_error = False
-            time.sleep(RETRY_TIME)
+        except SpecialException as error: 
+            message = f'Сбой в работе программы: {error}' 
+            logger.critical(message) 
+            if message != my_error:
+                sent = send_message(bot, message)
+                if sent is True:
+                    homeworks = message
+                time.sleep(RETRY_TIME) 
 
 
 if __name__ == '__main__':
